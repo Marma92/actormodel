@@ -1,0 +1,18 @@
+{
+  "name": "nodejs-actor-model",
+  "version": "1.0.0",
+  "description": "An implementation of the Actor Model in Node.js",
+  "main": "main.js",
+  "scripts": {
+    "start": "node main.js"
+  },
+  "keywords": [
+    "actor",
+    "model",
+    "concurrency",
+    "node.js"
+  ],
+  "author": "Your Name",
+  "license": "MIT",
+  "dependencies": {}
+}
