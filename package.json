@@ -14,5 +14,7 @@
   ],
   "author": "Your Name",
   "license": "MIT",
-  "dependencies": {}
+  "devDependencies": {
+    "sqlite3": "^5.1.7"
+  }
 }

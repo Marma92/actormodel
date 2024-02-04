@@ -19,7 +19,7 @@ To run the project:
 3. Navigate to the project directory in your terminal.
 4. Run the main.js file using Node.js:
 
-   node main.js
+> node main.js
 
 ## Potential Improvements
 

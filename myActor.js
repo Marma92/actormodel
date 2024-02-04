@@ -1,4 +1,8 @@
-const Actor = require('./actor');
+/**
+ * here is a typical example.
+ */
+
+const Actor = require('./actors/actor');
 
 class MyActor extends Actor {
   constructor() {

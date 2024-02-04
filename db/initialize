@@ -1,0 +1,19 @@
+const sqlite3 = require('sqlite3').verbose();
+
+const db = new sqlite3.Database(':memory:');
+
+function initializeDatabase() {
+  // Create inventory table if not exists
+  db.run(
+    'CREATE TABLE IF NOT EXISTS inventory (product_id TEXT PRIMARY KEY, quantity INTEGER)',
+    function (err) {
+      if (err) {
+        console.error('Error initializing database:', err);
+      } else {
+        console.log('Database initialized successfully.');
+      }
+    }
+  );
+}
+
+module.exports = initializeDatabase;
