@@ -24,6 +24,10 @@ class MyActor extends Actor {
         console.log('Unknown message type:', message.type);
     }
   }
+
+  restart() {
+    this.state = 0;
+  }
 }
 
 module.exports = MyActor;

@@ -5,6 +5,7 @@ This project demonstrates an implementation of the Actor Model in Node.js, a com
 ## How it works
 
 - `actors/actor.js`: The base `Actor` class. Each actor owns a mailbox; incoming messages are queued and processed **asynchronously and sequentially** (one message at a time per actor), which is what guarantees consistency without locks.
+- `actors/supervisor.js`: Minimal one-for-one **supervision**: when a supervised actor's handler throws, the supervisor restarts it (`restart()` resets state, the failing message is dropped); past `maxRestarts` the actor is stopped and ignores further messages.
 - `myActor.js`: A minimal example subclass (counter actor).
 - `services/`: A small microservices-style demo built on actors:
   - `orderService.js` — receives `CREATE_ORDER`, forwards a reservation request to inventory.
@@ -25,6 +26,10 @@ This project demonstrates an implementation of the Actor Model in Node.js, a com
 
    > npm start
 
+4. Run the tests (built-in Node.js test runner, no extra dependency):
+
+   > npm test
+
 Expected output:
 
 ```
@@ -39,13 +44,15 @@ Notification sent for order 123 - Order 123 confirmed
 Reservation failed for order 124 - insufficient stock: product2
 ```
 
+## Tests
+
+The `test/` directory covers the core actor guarantees — mailbox ordering, asynchronous delivery, failure isolation, supervision (restart then stop) — plus an integration test of the inventory reservation flow against SQLite.
+
 ## Potential Improvements
 
-1. **Supervision**: Restart or escalate when an actor's handler keeps failing.
-2. **Actor addresses**: Route messages through a registry instead of direct object references, enabling location transparency.
-3. **Compensation / sagas**: Release reserved stock when payment fails.
-4. **Persistence**: Use a file-backed database instead of `:memory:`.
-5. **Tests**: Unit tests for mailbox ordering, error handling, and the reservation flow.
+1. **Actor addresses**: Route messages through a registry instead of direct object references, enabling location transparency.
+2. **Compensation / sagas**: Release reserved stock when payment fails.
+3. **Persistence**: Use a file-backed database instead of `:memory:`.
 
 ## Contributing
 

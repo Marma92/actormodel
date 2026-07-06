@@ -2,6 +2,8 @@ class Actor {
   constructor() {
     this.mailbox = [];
     this.processing = false;
+    this.stopped = false;
+    this.supervisor = null;
   }
 
   send(target, message) {
@@ -9,6 +11,7 @@ class Actor {
   }
 
   receiveMessage(message) {
+    if (this.stopped) return;
     this.mailbox.push(message);
     if (!this.processing) {
       this.processing = true;
@@ -19,12 +22,16 @@ class Actor {
   }
 
   async processMessages() {
-    while (this.mailbox.length > 0) {
+    while (this.mailbox.length > 0 && !this.stopped) {
       const message = this.mailbox.shift();
       try {
         await this.handleMessage(message);
       } catch (error) {
-        console.error('Error handling message:', error.message);
+        if (this.supervisor) {
+          this.supervisor.onFailure(this, error, message);
+        } else {
+          console.error('Error handling message:', error.message);
+        }
       }
     }
     this.processing = false;
@@ -32,6 +39,14 @@ class Actor {
 
   async handleMessage(message) {
     throw new Error('handleMessage method must be implemented by subclasses');
+  }
+
+  // Called by a supervisor after a failure; subclasses reset their state here.
+  restart() {}
+
+  stop() {
+    this.stopped = true;
+    this.mailbox = [];
   }
 }
 
