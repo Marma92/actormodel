@@ -1,113 +1,70 @@
 const Actor = require('../actors/actor');
-const sqlite3 = require('sqlite3').verbose();
+const { db } = require('../db/initialize');
 
-// Create a SQLite database connection
-const db = new sqlite3.Database(':memory:');
+function run(sql, params) {
+  return new Promise((resolve, reject) => {
+    db.run(sql, params, (err) => (err ? reject(err) : resolve()));
+  });
+}
+
+function get(sql, params) {
+  return new Promise((resolve, reject) => {
+    db.get(sql, params, (err, row) => (err ? reject(err) : resolve(row)));
+  });
+}
 
 class InventoryServiceActor extends Actor {
+  constructor({ paymentService } = {}) {
+    super();
+    this.paymentService = paymentService;
+  }
+
   async handleMessage(message) {
     switch (message.type) {
-      case 'CHECK_INVENTORY':
-        // Check product availability
-        this.checkInventory(message.productId);
+      case 'ADD_STOCK':
+        await run(
+          'INSERT INTO inventory (product_id, quantity) VALUES (?, ?) ' +
+            'ON CONFLICT(product_id) DO UPDATE SET quantity = quantity + excluded.quantity',
+          [message.productId, message.quantity]
+        );
+        console.log('Stock added:', message.productId, `+${message.quantity}`);
         break;
-      case 'RESERVE_INVENTORY':
-        // Reserve inventory for an order
-        await this.reserveInventory(message.productId, message.quantity);
-        break;
-      // Other message types handled here
-    }
-  }
-
-  // Method to check product availability in SQLite
-  checkInventory(productId) {
-    db.get(
-      'SELECT quantity FROM inventory WHERE product_id = ?',
-      [productId],
-      (err, row) => {
-        if (err) {
-          console.error('Error checking inventory:', err);
-        } else {
-          if (row) {
+      case 'RESERVE_ITEMS': {
+        const { order } = message;
+        // Per-actor sequential processing makes this check-then-update safe:
+        // no other reservation can interleave between the SELECT and UPDATE.
+        for (const item of order.items) {
+          const row = await get(
+            'SELECT quantity FROM inventory WHERE product_id = ?',
+            [item.productId]
+          );
+          if (!row || row.quantity < item.quantity) {
             console.log(
-              `Product ${productId} available. Quantity: ${row.quantity}`
+              'Reservation failed for order',
+              order.id,
+              '- insufficient stock:',
+              item.productId
             );
-          } else {
-            console.log(`Product ${productId} not found in inventory.`);
+            return;
           }
         }
-      }
-    );
-  }
-
-  // Method to reserve inventory for an order in SQLite
-  async reserveInventory(productId, quantity) {
-    try {
-      await new Promise((resolve, reject) => {
-        db.serialize(() => {
-          db.run('BEGIN TRANSACTION');
-          db.get(
-            'SELECT quantity FROM inventory WHERE product_id = ? FOR UPDATE',
-            [productId],
-            async (err, row) => {
-              if (err) {
-                await this.rollbackAndReject(err, reject);
-              } else {
-                if (row && row.quantity >= quantity) {
-                  await this.updateInventory(
-                    productId,
-                    quantity,
-                    resolve,
-                    reject
-                  );
-                } else {
-                  await this.rollbackAndReject(
-                    new Error(
-                      `Insufficient inventory for product ${productId}.`
-                    ),
-                    reject
-                  );
-                }
-              }
-            }
+        for (const item of order.items) {
+          await run(
+            'UPDATE inventory SET quantity = quantity - ? WHERE product_id = ?',
+            [item.quantity, item.productId]
           );
-        });
-      });
-    } catch (error) {
-      console.error('Error reserving inventory:', error);
-      throw error;
-    }
-  }
-
-  // Helper method to update inventory for a product in the database
-  async updateInventory(productId, quantity, resolve, reject) {
-    db.run(
-      'UPDATE inventory SET quantity = quantity - ? WHERE product_id = ?',
-      [quantity, productId],
-      function (err) {
-        if (err) {
-          this.rollbackAndReject(err, reject);
-        } else if (this.changes === 0) {
-          this.rollbackAndReject(
-            new Error(`Insufficient inventory for product ${productId}.`),
-            reject
-          );
-        } else {
-          db.run('COMMIT');
-          console.log(
-            `Inventory for product ${productId} reserved successfully.`
-          );
-          resolve();
         }
+        console.log('Items reserved for order', order.id);
+        this.send(this.paymentService, {
+          type: 'PROCESS_PAYMENT',
+          orderId: order.id,
+          amount: order.amount,
+        });
+        break;
       }
-    );
-  }
-
-  // Helper method to rollback transaction and reject promise with error
-  rollbackAndReject(err, reject) {
-    db.run('ROLLBACK');
-    console.error('Error reserving inventory:', err);
-    reject(err);
+      default:
+        console.log('InventoryService: unknown message type:', message.type);
+    }
   }
 }
 

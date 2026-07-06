@@ -1,12 +1,28 @@
 const Actor = require('../actors/actor');
 
 class PaymentServiceActor extends Actor {
+  constructor({ notificationService } = {}) {
+    super();
+    this.notificationService = notificationService;
+  }
+
   async handleMessage(message) {
     switch (message.type) {
       case 'PROCESS_PAYMENT':
-        // Process payment transaction
+        console.log(
+          'Payment processed for order',
+          message.orderId,
+          '- amount:',
+          message.amount
+        );
+        this.send(this.notificationService, {
+          type: 'SEND_NOTIFICATION',
+          orderId: message.orderId,
+          text: `Order ${message.orderId} confirmed`,
+        });
         break;
-      // Other message types handled here
+      default:
+        console.log('PaymentService: unknown message type:', message.type);
     }
   }
 }

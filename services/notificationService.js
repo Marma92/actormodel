@@ -4,9 +4,10 @@ class NotificationServiceActor extends Actor {
   async handleMessage(message) {
     switch (message.type) {
       case 'SEND_NOTIFICATION':
-        // Send notification to user
+        console.log('Notification sent for order', message.orderId, '-', message.text);
         break;
-      // Other message types handled here
+      default:
+        console.log('NotificationService: unknown message type:', message.type);
     }
   }
 }

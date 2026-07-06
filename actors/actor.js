@@ -1,15 +1,21 @@
 class Actor {
   constructor() {
     this.mailbox = [];
+    this.processing = false;
   }
 
-  sendMessage(message, target) {
+  send(target, message) {
     target.receiveMessage(message);
   }
 
-  async receiveMessage(message) {
+  receiveMessage(message) {
     this.mailbox.push(message);
-    await this.processMessages();
+    if (!this.processing) {
+      this.processing = true;
+      // Defer processing so sending never runs the target's handler
+      // on the sender's call stack.
+      setImmediate(() => this.processMessages());
+    }
   }
 
   async processMessages() {
@@ -21,6 +27,7 @@ class Actor {
         console.error('Error handling message:', error.message);
       }
     }
+    this.processing = false;
   }
 
   async handleMessage(message) {
