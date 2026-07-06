@@ -1,4 +1,8 @@
-const Actor = require('./actor');
+/**
+ * here is a typical example.
+ */
+
+const Actor = require('./actors/actor');
 
 class MyActor extends Actor {
   constructor() {
@@ -19,6 +23,10 @@ class MyActor extends Actor {
       default:
         console.log('Unknown message type:', message.type);
     }
+  }
+
+  restart() {
+    this.state = 0;
   }
 }
 

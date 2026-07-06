@@ -1,36 +1,58 @@
 # Actor Model Implementation in Node.js
 
-This project demonstrates an implementation of the Actor Model in Node.js, a computational model used for concurrent and distributed computing. Actors are independent entities that communicate through message passing, enabling scalable and efficient concurrency.
+This project demonstrates an implementation of the Actor Model in Node.js, a computational model used for concurrent and distributed computing. Actors are independent entities that communicate through asynchronous message passing, enabling scalable and efficient concurrency.
 
-## Description
+## How it works
 
-The project consists of the following files:
-
-- `actor.js`: Defines the base `Actor` class responsible for message passing and processing.
-- `myActor.js`: Defines a subclass `MyActor` implementing specific actor behavior.
-- `main.js`: Instantiates and interacts with actors to demonstrate message passing.
+- `actors/actor.js`: The base `Actor` class. Each actor owns a mailbox; incoming messages are queued and processed **asynchronously and sequentially** (one message at a time per actor), which is what guarantees consistency without locks.
+- `actors/supervisor.js`: Minimal one-for-one **supervision**: when a supervised actor's handler throws, the supervisor restarts it (`restart()` resets state, the failing message is dropped); past `maxRestarts` the actor is stopped and ignores further messages.
+- `myActor.js`: A minimal example subclass (counter actor).
+- `services/`: A small microservices-style demo built on actors:
+  - `orderService.js` — receives `CREATE_ORDER`, forwards a reservation request to inventory.
+  - `inventoryService.js` — manages stock in SQLite (`ADD_STOCK`, `RESERVE_ITEMS`), forwards to payment on success.
+  - `paymentService.js` — processes `PROCESS_PAYMENT`, forwards to notification.
+  - `notificationService.js` — handles `SEND_NOTIFICATION`.
+- `db/initialize.js`: Shared in-memory SQLite database used by the inventory service.
+- `main.js`: Wires the actors together and runs the demo pipeline: order → inventory → payment → notification, including a failure case (insufficient stock).
 
 ## Usage
 
-To run the project:
-
 1. Ensure you have Node.js installed on your system.
-2. Clone the repository to your local machine.
-3. Navigate to the project directory in your terminal.
-4. Run the main.js file using Node.js:
+2. Install dependencies:
 
-   node main.js
+   > npm install
+
+3. Run the demo:
+
+   > npm start
+
+4. Run the tests (built-in Node.js test runner, no extra dependency):
+
+   > npm test
+
+Expected output:
+
+```
+Database initialized successfully.
+Order created: 123
+Order created: 124
+Stock added: product1 +10
+Stock added: product2 +5
+Items reserved for order 123
+Payment processed for order 123 - amount: 100
+Notification sent for order 123 - Order 123 confirmed
+Reservation failed for order 124 - insufficient stock: product2
+```
+
+## Tests
+
+The `test/` directory covers the core actor guarantees — mailbox ordering, asynchronous delivery, failure isolation, supervision (restart then stop) — plus an integration test of the inventory reservation flow against SQLite.
 
 ## Potential Improvements
 
-1. **Actor Pooling**: Maintain a pool of pre-initialized actors to reduce overhead.
-2. **Message Queue Optimization**: Implement a more efficient message queue mechanism.
-3. **Load Balancing**: Implement a load balancing mechanism for even message distribution.
-4. **Concurrency Control**: Implement fine-grained locking or optimistic concurrency control.
-5. **Caching and Memoization**: Introduce caching to reduce redundant computations.
-6. **Asynchronous I/O Operations**: Utilize asynchronous I/O for non-blocking operations.
-7. **Performance Monitoring and Tuning**: Regularly monitor and optimize system performance.
-8. **Resource Management**: Optimize resource usage for improved efficiency.
+1. **Actor addresses**: Route messages through a registry instead of direct object references, enabling location transparency.
+2. **Compensation / sagas**: Release reserved stock when payment fails.
+3. **Persistence**: Use a file-backed database instead of `:memory:`.
 
 ## Contributing
 
